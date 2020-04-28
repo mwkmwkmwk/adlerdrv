@@ -1,0 +1,1 @@
+obj-m   := adlerdev.o
