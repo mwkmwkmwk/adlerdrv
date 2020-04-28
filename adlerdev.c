@@ -153,7 +153,7 @@ static ssize_t adlerdev_write(struct file *file, const char __user *buf,
 				return res ? res : -ERESTARTSYS;
 			spin_lock_irqsave(&dev->slock, flags);
 		}
-		abuf = list_entry(dev->buffers_running.next, struct adlerdev_buffer, lh);
+		abuf = list_entry(dev->buffers_free.next, struct adlerdev_buffer, lh);
 		list_del(&abuf->lh);
 		spin_unlock_irqrestore(&dev->slock, flags);
 		/* Got buffer, fill it.  */
