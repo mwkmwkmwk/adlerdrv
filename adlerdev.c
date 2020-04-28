@@ -201,7 +201,7 @@ static ssize_t adlerdev_read(struct file *file, char __user *buf,
 	}
 	sum = ctx->sum;
 	spin_unlock_irqrestore(&dev->slock, flags);
-	if (copy_to_user(&sum, buf, 4))
+	if (copy_to_user(buf, &sum, 4))
 		return -EFAULT;
 	return 4;
 }
