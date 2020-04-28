@@ -151,7 +151,7 @@ static ssize_t adlerdev_write(struct file *file, const char __user *buf,
 		spin_lock_irqsave(&dev->slock, flags);
 		while (list_empty(&dev->buffers_free)) {
 			spin_unlock_irqrestore(&dev->slock, flags);
-			if (wait_event_interruptible(ctx->wq, !list_empty(&dev->buffers_free)))
+			if (wait_event_interruptible(dev->free_wq, !list_empty(&dev->buffers_free)))
 				return res ? res : -ERESTARTSYS;
 			spin_lock_irqsave(&dev->slock, flags);
 		}
@@ -186,7 +186,7 @@ static ssize_t adlerdev_write(struct file *file, const char __user *buf,
 	return res;
 }
 
-static ssize_t adlerdev_read(struct file *file, char __user *buf, 
+static ssize_t adlerdev_read(struct file *file, char __user *buf,
 		size_t len, loff_t *off)
 {
 	struct adlerdev_context *ctx = file->private_data;
@@ -362,6 +362,29 @@ static void adlerdev_remove(struct pci_dev *pdev)
 	kfree(dev);
 }
 
+static int adlerdev_suspend(struct pci_dev *pdev, pm_message_t state)
+{
+	unsigned long flags;
+	struct adlerdev_device *dev = pci_get_drvdata(pdev);
+	spin_lock_irqsave(&dev->slock, flags);
+	while (list_empty(&dev->buffers_free)) {
+		spin_unlock_irqrestore(&dev->slock, flags);
+		wait_event(dev->idle_wq, !list_empty(&dev->buffers_free));
+		spin_lock_irqsave(&dev->slock, flags);
+	}
+	spin_unlock_irqrestore(&dev->slock, flags);
+	adlerdev_iow(dev, ADLERDEV_INTR_ENABLE, 0);
+	return 0;
+}
+
+static int adlerdev_resume(struct pci_dev *pdev)
+{
+	struct adlerdev_device *dev = pci_get_drvdata(pdev);
+	adlerdev_iow(dev, ADLERDEV_INTR, 1);
+	adlerdev_iow(dev, ADLERDEV_INTR_ENABLE, 1);
+	return 0;
+}
+
 static struct pci_device_id adlerdev_pciids[] = {
 	{ PCI_DEVICE(ADLERDEV_VENDOR_ID, ADLERDEV_DEVICE_ID) },
 	{ 0 }
@@ -372,7 +395,8 @@ static struct pci_driver adlerdev_pci_driver = {
 	.id_table = adlerdev_pciids,
 	.probe = adlerdev_probe,
 	.remove = adlerdev_remove,
-	// XXX suspend
+	.suspend = adlerdev_suspend,
+	.resume = adlerdev_resume,
 };
 
 /* Init & exit.  */
