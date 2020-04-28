@@ -56,13 +56,13 @@ static struct class adlerdev_class = {
 static inline void adlerdev_iow(struct adlerdev_device *dev, uint32_t reg, uint32_t val)
 {
 	iowrite32(val, dev->bar + reg);
-	//printk(KERN_ALERT "adlerdev %03x <- %08x\n", reg, val);
+//	printk(KERN_ALERT "adlerdev %03x <- %08x\n", reg, val);
 }
 
 static inline uint32_t adlerdev_ior(struct adlerdev_device *dev, uint32_t reg)
 {
 	uint32_t res = ioread32(dev->bar + reg);
-	//printk(KERN_ALERT "adlerdev %03x -> %08x\n", reg, res);
+//	printk(KERN_ALERT "adlerdev %03x -> %08x\n", reg, res);
 	return res;
 }
 
@@ -75,6 +75,7 @@ static irqreturn_t adlerdev_isr(int irq, void *opaque)
 	uint32_t istatus;
 	struct adlerdev_buffer *buf;
 	spin_lock_irqsave(&dev->slock, flags);
+//	printk(KERN_ALERT "adlerdev isr\n");
 	istatus = adlerdev_ior(dev, ADLERDEV_INTR) & adlerdev_ior(dev, ADLERDEV_INTR_ENABLE);
 	if (istatus) {
 		adlerdev_iow(dev, ADLERDEV_INTR, istatus);
@@ -145,6 +146,7 @@ static ssize_t adlerdev_write(struct file *file, const char __user *buf,
 	struct adlerdev_buffer *abuf;
 	while (len) {
 		size_t clen = min(len, PAGE_SIZE);
+//		printk(KERN_ALERT "adlerdev write %zu\n", clen);
 		/* Get a free buffer.  */
 		spin_lock_irqsave(&dev->slock, flags);
 		while (list_empty(&dev->buffers_free)) {
@@ -166,6 +168,7 @@ static ssize_t adlerdev_write(struct file *file, const char __user *buf,
 		}
 		abuf->fill_size = clen;
 		abuf->ctx = ctx;
+		ctx->pending_buffers++;
 		/* Submit it.  */
 		spin_lock_irqsave(&dev->slock, flags);
 		if (list_empty(&dev->buffers_running)) {
