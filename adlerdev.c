@@ -367,9 +367,9 @@ static int adlerdev_suspend(struct pci_dev *pdev, pm_message_t state)
 	unsigned long flags;
 	struct adlerdev_device *dev = pci_get_drvdata(pdev);
 	spin_lock_irqsave(&dev->slock, flags);
-	while (list_empty(&dev->buffers_free)) {
+	while (!list_empty(&dev->buffers_running)) {
 		spin_unlock_irqrestore(&dev->slock, flags);
-		wait_event(dev->idle_wq, !list_empty(&dev->buffers_free));
+		wait_event(dev->idle_wq, list_empty(&dev->buffers_running));
 		spin_lock_irqsave(&dev->slock, flags);
 	}
 	spin_unlock_irqrestore(&dev->slock, flags);
